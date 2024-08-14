@@ -1,0 +1,8 @@
+type Query {
+  test: Boolean
+}
+
+type Subscription {
+  test: Int!
+  greetings: String!
+}

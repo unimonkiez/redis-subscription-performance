@@ -1,5 +1,7 @@
 install:
 	yarn install --frozen-lockfile
+codegen:
+	npx graphql-codegen -c ./bin/graphql-codegen.ts
 format:
 	npx prettier --write "src/**/*.ts"
 format-check:

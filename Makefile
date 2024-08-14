@@ -17,6 +17,10 @@ test:
 build:
 	npx tsc --project tsconfig.json
 start:
-	npx ts-node-dev --no-notify --respawn --trace-warnings --inspect -r tsconfig-paths/register src/start.ts
+	make server
+server:
+	npx ts-node-dev --no-notify --respawn --trace-warnings --inspect -r tsconfig-paths/register src/server.ts
+clients:
+	npx ts-node-dev --no-notify --respawn --trace-warnings --inspect -r tsconfig-paths/register src/clients.ts
 start-prod:
 	NODE_PATH=dist/ NODE_ENV=production node ./dist/src/start.js

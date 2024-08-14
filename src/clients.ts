@@ -13,12 +13,12 @@ const listen = async (id: number) => {
 
   let i = 0;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  for await (const event of subscription) {
+  for await (const msg of subscription) {
     console.log(`id=${id}, i=${i++}`);
   }
 };
 const start = async () => {
-  await Promise.race(Array.from({ length: 10 }).map((_, id) => listen(id)));
+  await Promise.race(Array.from({ length: 100 }).map((_, id) => listen(id)));
 };
 
 start().then(

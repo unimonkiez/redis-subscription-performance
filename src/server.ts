@@ -1,6 +1,16 @@
-import { WebSocketServer } from "ws";
+import { ApolloServer } from "@apollo/server";
+import { expressMiddleware } from "@apollo/server/express4";
+import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
+import { createServer } from "http";
+import express from "express";
+import { WebSocket, WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
+import bodyParser from "body-parser";
+import fs from "fs/promises";
+import path from "path";
 import { GraphQLSchema, GraphQLObjectType, GraphQLString } from "graphql";
+
+const PORT = 4_000;
 
 const sleep = (ms: number) =>
   new Promise((res) => {
@@ -53,14 +63,59 @@ const schema = new GraphQLSchema({
 });
 
 const start = async () => {
-  const server = new WebSocketServer({
-    port: 4000,
+  const app = express();
+  const httpServer = createServer(app);
+
+  const wsServer = new WebSocketServer({
+    server: httpServer,
     path: "/graphql",
   });
+  const mapOfUserPromises = new Map<WebSocket, Promise<void>>();
+  const serverCleanup = useServer(
+    {
+      schema,
+      onConnect(data) {
+        mapOfUserPromises.set(
+          data.extra.socket,
+          new Promise((res, rej) => {
+            data.extra.socket.on("close", () => {
+              const deleted = mapOfUserPromises.delete(data.extra.socket);
+              if (deleted) {
+                res();
+              } else {
+                rej();
+              }
+            });
+          }),
+        );
+      },
+    },
+    wsServer,
+  );
 
-  useServer({ schema }, server);
+  const server = new ApolloServer({
+    schema,
+    plugins: [
+      ApolloServerPluginDrainHttpServer({ httpServer }),
 
-  console.log("Listening to port 4000");
+      {
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              await serverCleanup.dispose();
+            },
+          };
+        },
+      },
+    ],
+  });
+
+  await server.start();
+  app.use("/graphql", bodyParser.json(), expressMiddleware(server, {}));
+
+  httpServer.listen(PORT, () => {
+    console.log(`Server is now running on http://localhost:${PORT}/graphql`);
+  });
 };
 
 start().then(

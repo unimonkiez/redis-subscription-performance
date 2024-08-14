@@ -20,7 +20,7 @@
     }
   },
   "dependencies": {
-    "@memorix/client-redis": "^1.5.2",
+    "@memorix/client-redis": "^1.5.10",
     "callback-to-async-iterator": "^1.1.1",
     "graphql": "^16.9.0",
     "graphql-ws": "^5.16.0",

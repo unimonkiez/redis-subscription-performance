@@ -602,7 +602,7 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@memorix/client-redis@^1.5.2":
+"@memorix/client-redis@^1.5.10":
   version "1.5.10"
   resolved "https://registry.yarnpkg.com/@memorix/client-redis/-/client-redis-1.5.10.tgz#b4a1bba5b7bd2fc53bb77695b4c6bedd8e17e826"
   integrity sha512-bTSQXYr8pSttTo8Z0aapUoGoMiGqIgrLB2UwwW0py35XqqoIZ11cb1x9WN8J4FJ8mk9MNfo2xPVvbMvbm3UsNA==

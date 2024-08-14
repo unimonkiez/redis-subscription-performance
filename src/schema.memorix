@@ -1,0 +1,16 @@
+Config {
+    output: [
+        {
+            language: "typescript"
+            file: "./memorix.generated.ts"
+        }
+    ]
+}
+
+Namespace gpio {
+    PubSub {
+        hello {
+            payload: boolean
+        }
+    }
+}

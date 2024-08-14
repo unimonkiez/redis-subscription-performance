@@ -1,6 +1,8 @@
 import { WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import { GraphQLSchema, GraphQLObjectType, GraphQLString } from "graphql";
+import Redis from "ioredis";
+import { Memorix } from "./memorix.generated";
 
 const sleep = (ms: number) =>
   new Promise((res) => {
@@ -41,10 +43,29 @@ const schema = new GraphQLSchema({
     fields: {
       greetings: {
         type: GraphQLString,
-        subscribe: async function* () {
+        subscribe: async function* (info, args, ctx: { memorix: Memorix }) {
+          // const topic = `abc`;
+          // await ctx.redis.subscribe(topic);
+
+          // let resolve = undefined as undefined | (() => void);
+          // ctx.redis.on("message", (channel: string) => {
+          //   if (channel === topic && resolve !== undefined) {
+          //     resolve();
+          //   }
+          // });
+
+          // let messagePromise = new Promise<void>((res) => {
+          //   resolve = res;
+          // });
+          const sub = (await ctx.memorix.gpio.pubsub.hello.subscribe())
+            .asyncIterator;
           while (true) {
-            await sleep(1);
+            await sub.next();
             yield { greetings: getId() };
+            // eslint-disable-next-line @typescript-eslint/no-loop-func
+            // messagePromise = new Promise<void>((res) => {
+            //   resolve = res;
+            // });
           }
         },
       },
@@ -53,14 +74,27 @@ const schema = new GraphQLSchema({
 });
 
 const start = async () => {
+  const memorix = new Memorix({ redisUrl: process.env.REDIS_URL! });
+  await memorix.connect();
+  const redis = new Redis(process.env.REDIS_URL!);
+  const redisSub = redis.duplicate();
   const server = new WebSocketServer({
     port: 4000,
     path: "/graphql",
   });
 
-  useServer({ schema }, server);
+  useServer(
+    { schema, context: async () => ({ redis: redisSub, memorix }) },
+    server,
+  );
 
   console.log("Listening to port 4000");
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    await sleep(1);
+    await redis.publish("abc", "def");
+    await memorix.gpio.pubsub.hello.publish(true);
+  }
 };
 
 start().then(

@@ -1,0 +1,4 @@
+*.generated.ts
+*.generated.tsx
+node_modules
+src/**/*generated*

@@ -1,0 +1,28 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "NodeJS: Module",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "--nolazy",
+        "-r",
+        "tsconfig-paths/register",
+        "-r",
+        "ts-node/register/transpile-only"
+      ],
+      "args": ["src/start.ts"],
+      "cwd": "${workspaceRoot}",
+      "internalConsoleOptions": "openOnSessionStart",
+      "skipFiles": ["<node_internals>/**", "node_modules/**"],
+      "env": {
+        "DATABASE_APP_URL": "postgresql://postgres:uvwireless@localhost:5432/r2_app?schema=public",
+        "DATABASE_ANALYTICS_URL": "postgresql://postgres:uvwireless@localhost:5432/r2_analytics?schema=public",
+        "DEVICE_MANAGER_DATA": "{\"data\":{\"threats\":[]}}",
+        "REDIS_URL": "redis://localhost:6379/0"
+      }
+    }
+  ]
+}

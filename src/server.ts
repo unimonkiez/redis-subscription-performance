@@ -1,3 +1,4 @@
+// import { subscribe } from "graphql";
 import { ApolloServer } from "@apollo/server";
 import { expressMiddleware } from "@apollo/server/express4";
 import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHttpServer";
@@ -6,63 +7,17 @@ import express from "express";
 import { WebSocket, WebSocketServer } from "ws";
 import { useServer } from "graphql-ws/lib/use/ws";
 import bodyParser from "body-parser";
-import fs from "fs/promises";
-import path from "path";
-import { GraphQLSchema, GraphQLObjectType, GraphQLString } from "graphql";
+import { schema as schemaCodeFirst } from "./schema-code-first";
+import { schema as schemaStlFirst } from "./schema-stl-first";
+import { createContext, createGraphqlContext } from "./context";
 
 const PORT = 4_000;
 
-const sleep = (ms: number) =>
-  new Promise((res) => {
-    setTimeout(res, ms);
-  });
+const IS_CODE_FIRST = process.env.CODE_FIRST === "true";
+const schema = IS_CODE_FIRST ? schemaCodeFirst : schemaStlFirst;
 
-const makeId = (length: number) => {
-  let result = "";
-  const characters =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  const charactersLength = characters.length;
-  let counter = 0;
-  while (counter < length) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-    counter += 1;
-  }
-  return result;
-};
-
-const ids = Array.from({ length: 20 }).map(() => makeId(1000));
-
-const getId = () => {
-  return ids[Math.floor(Math.random() * ids.length)];
-};
-
-const schema = new GraphQLSchema({
-  query: new GraphQLObjectType({
-    name: "Query",
-    fields: {
-      hello: {
-        type: GraphQLString,
-        resolve: () => "world",
-      },
-    },
-  }),
-  subscription: new GraphQLObjectType({
-    name: "Subscription",
-    fields: {
-      greetings: {
-        type: GraphQLString,
-        subscribe: async function* () {
-          while (true) {
-            await sleep(1);
-            yield { greetings: getId() };
-          }
-        },
-      },
-    },
-  }),
-});
-
-const start = async () => {
+export const start = async () => {
+  const ctx = await createContext();
   const app = express();
   const httpServer = createServer(app);
 
@@ -74,6 +29,57 @@ const start = async () => {
   const serverCleanup = useServer(
     {
       schema,
+      context: async (data) => {
+        const promise = mapOfUserPromises.get(data.extra.socket);
+        if (!promise) {
+          throw new Error("Should find the promise of connection");
+        }
+        return createGraphqlContext(
+          ctx,
+          (data?.connectionParams ?? {}) as Record<string, string>,
+          promise,
+        );
+      },
+      // async subscribe(...args) {
+      //   const result = await subscribe(...args);
+      //   if ("next" in result) {
+      //     // is an async iterable, augment the next method to handle thrown errors
+      //     const originalNext = result.next;
+      //     (result as any).next = async () => {
+      //       try {
+      //         return await originalNext();
+      //       } catch (err) {
+      //         if (err instanceof Error) {
+      //           return {
+      //             value: {
+      //               errors: [
+      //                 {
+      //                   ...err,
+      //                   message: err.message,
+      //                   path:
+      //                     args[0].document.definitions[0].loc !== undefined
+      //                       ? args[0].document.definitions[0].loc.source.body.split(
+      //                           "\n",
+      //                         )
+      //                       : [],
+      //                   extensions: {
+      //                     code: err.name,
+      //                     stacktrace: err.stack
+      //                       ? err.stack.split("\n")
+      //                       : [`${err.name}: ${err.message}`],
+      //                     ...(err as any).extensions,
+      //                   },
+      //                 },
+      //               ],
+      //             },
+      //           };
+      //         }
+      //         // gracefully handle the error thrown from the next method
+      //       }
+      //     };
+      //   }
+      //   return result;
+      // },
       onConnect(data) {
         mapOfUserPromises.set(
           data.extra.socket,
@@ -111,10 +117,23 @@ const start = async () => {
   });
 
   await server.start();
-  app.use("/graphql", bodyParser.json(), expressMiddleware(server, {}));
+  app.use(
+    "/graphql",
+    bodyParser.json(),
+    expressMiddleware(server, {
+      context: async (data) =>
+        createGraphqlContext(
+          ctx,
+          data.req.headers as Record<string, string>,
+          undefined,
+        ),
+    }),
+  );
 
   httpServer.listen(PORT, () => {
-    console.log(`Server is now running on http://localhost:${PORT}/graphql`);
+    console.log(
+      `Server is now running on http://localhost:${PORT}/graphql using ${IS_CODE_FIRST ? "code" : "stl"} first approach`,
+    );
   });
 };
 
